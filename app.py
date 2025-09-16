@@ -42,7 +42,21 @@ def visualize():
         try:
             corpus = crawl(tempdir) 
         except FileNotFoundError or not corpus:
-            return jsonify("error": "No valid html found in corpus")
+            return jsonify({"error": "No valid HTML files found in corpus."}), 400
+        
+        # run PageRank
+        pagerank = iterate_pagerank(corpus, DAMPING) 
+
+        #JSON response
+        nodes = [{"id": page, "rank": rank} for page, rank in pagerank.items()]
+        links = [
+            {"source": page, "target": link}
+            for page, targets in corpus.items()
+            for link in targets
+        ]
+
+        return jsonify({"nodes": nodes, "links": links})
+        
     
 
 if __name__ == '__main__':

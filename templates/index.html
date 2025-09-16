@@ -1,45 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PageRank Visualizer</title>
-    <!-- Tailwind CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PageRank Visualizer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+  <div class="w-full max-w-xl p-6 bg-gray-800 rounded-2xl shadow-lg">
+    <h1 class="text-2xl font-bold mb-4 text-center">PageRank Visualizer</h1>
+    <form id="uploadForm" class="space-y-4">
+      <input
+        type="file"
+        name="files"
+        id="fileInput"
+        multiple
+        accept=".html"
+        class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
+               file:rounded-full file:border-0 file:text-sm file:font-semibold 
+               file:bg-blue-600 file:text-white hover:file:bg-blue-500"
+      />
+      <button
+        type="submit"
+        class="w-full py-2 px-4 bg-green-600 hover:bg-green-500 rounded-lg font-semibold"
+      >
+        Upload & Visualize
+      </button>
+    </form>
 
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-6 shadow-md">
-        <h1 class="text-3xl font-bold text-center">PageRank Visualizer</h1>
-        <p class="text-center mt-2 text-blue-100">Visualize the importance of pages in your HTML corpus</p>
-    </header>
+    <div id="output" class="mt-6"></div>
+  </div>
 
-    <!-- Main Content -->
-    <main class="flex-grow flex items-center justify-center">
-        <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+  <script>
+    const form = document.getElementById("uploadForm");
+    const fileInput = document.getElementById("fileInput");
+    const output = document.getElementById("output");
 
-            <!-- Upload Section -->
-            <h2 class="text-xl font-semibold mb-4">Upload HTML Files</h2>
-            <form action="/visualize" method="POST" enctype="multipart/form-data" class="flex flex-col gap-4">
-                <input type="file" name="files" multiple accept=".html" class="border rounded p-2">
-                
-                <button type="submit" class="bg-blue-600 text-white p-2 rounded hover:bg-blue-700 transition">
-                    Compute PageRank
-                </button>
-            </form>
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-            <!-- Info -->
-            <p class="mt-4 text-gray-500 text-sm text-center">
-                You can upload multiple HTML files to see the PageRank graph.
-            </p>
-        </div>
-    </main>
+      const files = fileInput.files;
+      if (!files.length) {
+        output.innerHTML = `<p class="text-red-400">⚠️ Please upload at least one .html file</p>`;
+        return;
+      }
 
-    <!-- Footer -->
-    <footer class="bg-gray-200 text-gray-700 p-4 text-center">
-        &copy; 2025 PageRank Visualizer
-    </footer>
+      const formData = new FormData();
+      for (let f of files) {
+        formData.append("files", f);
+      }
 
+      try {
+        const res = await fetch("/visualize", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        if (data.error) {
+          output.innerHTML = `<p class="text-red-400">❌ ${data.error}</p>`;
+          return;
+        }
+
+        // Display JSON (for now, later we’ll render graph)
+        output.innerHTML = `
+          <pre class="bg-gray-700 p-4 rounded text-sm overflow-auto">
+            ${JSON.stringify(data, null, 2)}
+          </pre>
+        `;
+      } catch (err) {
+        output.innerHTML = `<p class="text-red-400">🚨 Error: ${err.message}</p>`;
+      }
+    });
+  </script>
 </body>
 </html>
