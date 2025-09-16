@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 DAMPING = 0.85
-SAMPLES = 10000
+SAMPLES = 1000
 
 @app.route('/')
 def home():
@@ -17,7 +17,11 @@ def home():
 
 @app.route('/visualize', methods=['POST']) #backend route to handle file uploads
 def visualize():
+
     uploaded_files = request.files.getlist("files")
+    method = request.form.get("method", "iterate") #default method is iteration
+
+
     if len(uploaded_files) <=  0:
         return render_template('result.html', error="No files uploaded.")
         #change result.html
@@ -38,14 +42,17 @@ def visualize():
                 return jsonify({"error": "No valid HTML files uploaded."}), 400
         
         
-        #crawl gets the corpus
+        #crawl gets the html files
         try:
             corpus = crawl(tempdir) 
-        except FileNotFoundError or not corpus:
+        except FileNotFoundError:
             return jsonify({"error": "No valid HTML files found in corpus."}), 400
         
-        # run PageRank
-        pagerank = iterate_pagerank(corpus, DAMPING) 
+        # COmputing Pagerank
+        if method == "sample":
+            pagerank = sample_pagerank(corpus, DAMPING, SAMPLES)
+        else:
+            pagerank = iterate_pagerank(corpus, DAMPING) 
 
         #JSON response
         nodes = [{"id": page, "rank": rank} for page, rank in pagerank.items()]
