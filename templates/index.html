@@ -8,40 +8,43 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 
-<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
-  <div class="w-full max-w-xl p-6 bg-gray-800 rounded-2xl shadow-lg">
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+  <!-- Header + Controls -->
+  <div class="p-6 bg-gray-800 shadow-lg z-10">
     <h1 class="text-2xl font-bold mb-4 text-center">PageRank Visualizer</h1>
-    <div>
-  <label class="block mb-1 font-semibold">Computation Method</label>
-  <select id="methodSelect" name="method"
-    class="w-full px-3 py-2 bg-gray-700 text-white rounded-lg">
-    <option value="iterate">Iterative</option>
-    <option value="sample">Sampling</option>
-  </select>
-</div>
+    <div class="max-w-3xl mx-auto">
+      <label class="block mb-1 font-semibold">Computation Method</label>
+      <select id="methodSelect" name="method"
+        class="w-full px-3 py-2 mb-4 bg-gray-700 text-white rounded-lg">
+        <option value="iterate">Iterative</option>
+        <option value="sample">Sampling</option>
+      </select>
 
-    <form id="uploadForm" class="space-y-4">
-      <input
-        type="file"
-        name="files"
-        id="fileInput"
-        multiple
-        accept=".html"
-        class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
-               file:rounded-full file:border-0 file:text-sm file:font-semibold 
-               file:bg-blue-600 file:text-white hover:file:bg-blue-500"
-      />
-      <button
-        type="submit"
-        class="w-full py-2 px-4 bg-green-600 hover:bg-green-500 rounded-lg font-semibold"
-      >
-        Upload & Visualize
-      </button>
-    </form>
+      <form id="uploadForm" class="space-y-4">
+        <input
+          type="file"
+          name="files"
+          id="fileInput"
+          multiple
+          accept=".html"
+          class="block w-full text-sm text-gray-300 file:mr-4 file:py-2 file:px-4 
+                 file:rounded-full file:border-0 file:text-sm file:font-semibold 
+                 file:bg-blue-600 file:text-white hover:file:bg-blue-500"
+        />
+        <button
+          type="submit"
+          class="w-full py-2 px-4 bg-green-600 hover:bg-green-500 rounded-lg font-semibold"
+        >
+          Upload & Visualize
+        </button>
+      </form>
 
-    <div id="output" class="mt-6"></div>
-    <div id="graph" class="mt-6 w-full h-[500px] bg-gray-700 rounded-lg"></div>
+      <div id="output" class="mt-6"></div>
+    </div>
   </div>
+
+  <!-- Graph Area -->
+  <div id="graph" class="flex-1 w-full bg-gray-900"></div>
 
   <script>
     const form = document.getElementById("uploadForm");
@@ -50,7 +53,6 @@
     const output = document.getElementById("output");
 
     form.addEventListener("submit", async (e) => {
-
       e.preventDefault();
 
       const files = fileInput.files;
@@ -63,7 +65,7 @@
       for (let f of files) {
         formData.append("files", f);
       }
-      formData.append("method", methodSelect.value); // drop down for choosing whether u want iterative or sample pagerank
+      formData.append("method", methodSelect.value);
 
       try {
         const res = await fetch("/visualize", {
@@ -77,7 +79,8 @@
           return;
         }
 
-        output.innerHTML = ""; // clear old JSON
+        output.innerHTML = ""; 
+        window.currentData = data; // save for resize
         drawGraph(data);
 
       } catch (err) {
@@ -85,20 +88,20 @@
       }
     });
 
-    // D3 graph drawing function
     function drawGraph(data) {
       d3.select("#graph").selectAll("*").remove();
 
-      const width = document.getElementById("graph").clientWidth;
-      const height = document.getElementById("graph").clientHeight;
+      const container = document.getElementById("graph");
+      const width = container.clientWidth;
+      const height = container.clientHeight;
 
       const svg = d3.select("#graph").append("svg")
         .attr("width", width)
         .attr("height", height);
 
       const simulation = d3.forceSimulation(data.nodes)
-        .force("link", d3.forceLink(data.links).id(d => d.id).distance(150))
-        .force("charge", d3.forceManyBody().strength(-300))
+        .force("link", d3.forceLink(data.links).id(d => d.id).distance(160))
+        .force("charge", d3.forceManyBody().strength(-400))
         .force("center", d3.forceCenter(width / 2, height / 2));
 
       const link = svg.append("g")
@@ -106,15 +109,18 @@
         .data(data.links)
         .enter()
         .append("line")
-        .attr("stroke", "#aaa");
+        .attr("stroke", "#aaa")
+        .attr("stroke-width", 1.5);
 
       const node = svg.append("g")
         .selectAll("circle")
         .data(data.nodes)
         .enter()
         .append("circle")
-        .attr("r", d => 30 * d.rank + 5)
-        .attr("fill", "skyblue")
+        .attr("r", d => 40 * d.rank + 10)  // bigger circles
+        .attr("fill", d => d3.interpolateBlues(d.rank))
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 2)
         .call(drag(simulation));
 
       const label = svg.append("g")
@@ -122,9 +128,52 @@
         .data(data.nodes)
         .enter()
         .append("text")
-        .text(d => d.id)
-        .attr("font-size", "12px")
-        .attr("dy", -3);
+        .text(d => `${d.id} (${d.rank.toFixed(3)})`)
+        .attr("font-size", "14px")
+        .attr("font-weight", "600")
+        .attr("dy", 4)
+        .attr("fill", "#facc15") // amber text for contrast
+        .attr("text-anchor", "middle");
+
+      node.on("click", (event, d) => {
+        node.attr("opacity", n =>
+          n.id === d.id ||
+          data.links.some(l =>
+            (l.source.id === d.id && l.target.id === n.id) ||
+            (l.target.id === d.id && l.source.id === n.id)
+          ) ? 1 : 0.2
+        );
+
+        link.attr("opacity", l =>
+          l.source.id === d.id || l.target.id === d.id ? 1 : 0.1
+        );
+
+        label.attr("opacity", n =>
+          n.id === d.id ||
+          data.links.some(l =>
+            (l.source.id === d.id && l.target.id === n.id) ||
+            (l.target.id === d.id && l.source.id === n.id)
+          ) ? 1 : 0.2
+        );
+
+        output.innerHTML = `
+          <div class="p-4 bg-gray-700 rounded-lg">
+            <p class="font-bold text-green-400">📄 ${d.id}</p>
+            <p>Rank: ${d.rank.toFixed(4)}</p>
+            <p>Outgoing links: ${data.links.filter(l => l.source.id === d.id).map(l => l.target.id).join(", ") || "None"}</p>
+            <p>Incoming links: ${data.links.filter(l => l.target.id === d.id).map(l => l.source.id).join(", ") || "None"}</p>
+          </div>
+        `;
+      });
+
+      svg.on("click", (event) => {
+        if (event.target.tagName === "svg") {
+          node.attr("opacity", 1);
+          link.attr("opacity", 1);
+          label.attr("opacity", 1);
+          output.innerHTML = "";
+        }
+      });
 
       simulation.on("tick", () => {
         link
@@ -139,7 +188,7 @@
 
         label
           .attr("x", d => d.x)
-          .attr("y", d => d.y);
+          .attr("y", d => d.y - (40 * d.rank + 15)); // move label above node
       });
 
       function drag(simulation) {
@@ -160,6 +209,12 @@
           });
       }
     }
+
+    window.addEventListener("resize", () => {
+      if (window.currentData) {
+        drawGraph(window.currentData);
+      }
+    });
   </script>
 </body>
 </html>
