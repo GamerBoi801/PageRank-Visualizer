@@ -50,10 +50,10 @@ There are 2 main strategies for calculating PageRank:
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/pagerank-visualizer.git
+git clone https://github.com/GamerBoi801/PageRank-Visualizer
 cd pagerank-visualizer
 
-# Create a virtual environment (recommended)
+# Create a virtual environment (recommended for Linux)
 python -m venv venv
 source venv/bin/activate   # On Linux/macOS
 venv\Scripts\activate      # On Windows
